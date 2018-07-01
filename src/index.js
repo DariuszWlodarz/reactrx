@@ -4,49 +4,33 @@ import { Observable } from "rxjs"
 import config from "recompose/rxjsObservableConfig"
 import {
   setObservableConfig,
-  componentFromStream
+  componentFromStream,
+  createEventHandler
 } from "recompose"
 
 setObservableConfig(config)
 
-const personById = id =>
-  `https://swapi.co/api/people/${id}`
-
-
-const Card = props => (
+const SimpleForm = ({ text, onInput }) => (
   <div>
-    <h1>{props.name}</h1>
-    <h2>{props.homeworld}</h2>
+    <input type="text" onInput={onInput}/>
+    <h2>{text}</h2>
   </div>
 )
 
-const loadById = id =>
-  Observable.ajax(personById(id))
-    .pluck("response")
-    .switchMap(
-      response =>
-        Observable.ajax(response.homeworld)
-          .pluck("response")
-          .startWith({ name: "" }),
-      (person, homeworld) => ({
-        ...person,
-        homeworld: homeworld.name
-      })
-    )
+const SingleFormSteams = componentFromStream(props$ => {
+  const {stream:onInput$, handler:onInput} = createEventHandler()
 
-const CardStream = componentFromStream(props$ =>
-  props$
-    .switchMap(props => loadById(props.id))
-    .map(Card)
-)
+  const text$ = onInput$.map(e => e.target.value).delay(1000).startWith('')
+
+  return text$.map(text => ({ text, onInput})).map(SimpleForm)
+})
+
+const logInput = e => console.log(e.target.value)
+
 
 const App = () => (
   <div>
-    <Card name="John" homeworld="Earth"/>
-    <CardStream id={1}/>
-    <CardStream id={12}/>
-    <CardStream id={10}/>
-    <CardStream id={24}/>
+    <SingleFormSteams />
   </div>
 )
 render(
